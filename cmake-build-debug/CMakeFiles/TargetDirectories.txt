@@ -1,0 +1,3 @@
+/home/spiccioni/Desktop/Base_Project_Deluxe/cmake-build-debug/CMakeFiles/Base_Project_Deluxe.dir
+/home/spiccioni/Desktop/Base_Project_Deluxe/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/spiccioni/Desktop/Base_Project_Deluxe/cmake-build-debug/CMakeFiles/rebuild_cache.dir
