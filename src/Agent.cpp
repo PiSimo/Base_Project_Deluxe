@@ -22,6 +22,38 @@ int Agent::move(double dt) {
     gc_position = result.endPoint;
     gc_local_velocity_direction = result.endingDir;
 
+    if (result.hitBoundary) {
+        //TODO: if you have boundary conditions you can put them here:
+        geometrycentral::Vector3 global_position = getGlobalPosition();
+
+        bool periodic_transformation = false;
+        // BC: x-direction periodic boundary conditions:
+        double shift=0.0;
+        if (global_position[0] >= 10.0) {
+            //global_position[0] = global_position[0] - 10.0;
+            shift = -10.0;
+            periodic_transformation = true;
+        }else if (global_position[0] <= 0.0) {
+            //global_position[0] = global_position[0] + 10.0;
+            shift = 10.0;
+            periodic_transformation = true;
+        }
+        if (periodic_transformation) {
+            // you have to find the new element and the new local coordinates:
+            geometrycentral::Vector2 dir{0,1};
+            result =traceGeodesic(*space->gc_geometry, gc_position, dir*shift, options);
+            gc_position = result.endPoint;
+            gc_local_velocity_direction = result.endingDir;
+        }
+
+        // BC: y-direction reflective boundary conditions:
+        if (global_position[1] >= 10.0 || global_position[1] <= 0.0) {
+            gc_local_velocity_direction[1] *= -1;
+        }
+
+
+    }
+
     return 0;
 }
 

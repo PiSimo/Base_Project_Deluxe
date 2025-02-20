@@ -28,7 +28,6 @@ public:
 
     std::unique_ptr<geometrycentral::surface::ManifoldSurfaceMesh> gc_mesh;
     std::unique_ptr<geometrycentral::surface::VertexPositionGeometry> gc_geometry;
-
 private:
     //MFEM Mesh:
     int manifold_dimension;

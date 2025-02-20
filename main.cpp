@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     std::uniform_real_distribution<double> dis(0.0, 2.0 * M_PI);
 
 
-    string mesh_file = "../input/mesh/alveolar_sac_mesh";
+    string mesh_file = "../input/mesh/plane_mesh";
     mfem::Mesh mfem_mesh(mesh_file+".msh");
     Space space(mfem_mesh);
     space.loadGCMeshFromFile(mesh_file+".stl");
@@ -27,11 +27,11 @@ int main(int argc, char *argv[]) {
 
     Agent agent(&space, 3000, local_coords, 1);
 
-    double speed=10;
-    vector<double> velocity{speed, 0};
+    double speed=1;
+    vector<double> velocity{ speed, 0};
     agent.setLocalVelocity(velocity);
 
-    double T = 1000;
+    double T = 50;
     double dt = 0.1;
     double persistance_time = 4;
 
@@ -50,14 +50,15 @@ int main(int argc, char *argv[]) {
         trajectory.push_back(agent.getGlobalPosition());
         cout<<"Step:"<<step<<endl;
 
-        if (step%n_persistance==0) {
+        if (step%n_persistance==0 and false) {
             double angle = dis(gen);
             agent.rotateVelocityDirection(angle);
         }
     }
 
-    utils::saveAgentTrajectory(trajectory, "../output/alveolar_trajectory.vtk");
-    ofstream out("../output/alveolar_manifold.vtk");
+    utils::saveAgentTrajectory(trajectory, "../output/plane_trajectory.vtk");
+
+    ofstream out("../output/plane_manifold.vtk");
     mfem_mesh.PrintVTK(out);
     out.close();
 
