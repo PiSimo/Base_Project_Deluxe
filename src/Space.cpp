@@ -3,8 +3,6 @@
 //
 #include "../include/Space.h"
 
-#include <oneapi/tbb/task_arena.h>
-
 using namespace mfem;
 using namespace std;
 

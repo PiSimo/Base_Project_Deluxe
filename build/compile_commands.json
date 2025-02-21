@@ -1,0 +1,26 @@
+[
+{
+  "directory": "/home/simon/Scrivania/Base_Project_Deluxe/build",
+  "command": "/usr/bin/c++  -I/usr/include/eigen3 -isystem /usr/local/mfem/include -g -std=gnu++20 -o CMakeFiles/Base_Project_Deluxe.dir/main.cpp.o -c /home/simon/Scrivania/Base_Project_Deluxe/main.cpp",
+  "file": "/home/simon/Scrivania/Base_Project_Deluxe/main.cpp",
+  "output": "CMakeFiles/Base_Project_Deluxe.dir/main.cpp.o"
+},
+{
+  "directory": "/home/simon/Scrivania/Base_Project_Deluxe/build",
+  "command": "/usr/bin/c++  -I/usr/include/eigen3 -isystem /usr/local/mfem/include -g -std=gnu++20 -o CMakeFiles/Base_Project_Deluxe.dir/src/Agent.cpp.o -c /home/simon/Scrivania/Base_Project_Deluxe/src/Agent.cpp",
+  "file": "/home/simon/Scrivania/Base_Project_Deluxe/src/Agent.cpp",
+  "output": "CMakeFiles/Base_Project_Deluxe.dir/src/Agent.cpp.o"
+},
+{
+  "directory": "/home/simon/Scrivania/Base_Project_Deluxe/build",
+  "command": "/usr/bin/c++  -I/usr/include/eigen3 -isystem /usr/local/mfem/include -g -std=gnu++20 -o CMakeFiles/Base_Project_Deluxe.dir/src/Space.cpp.o -c /home/simon/Scrivania/Base_Project_Deluxe/src/Space.cpp",
+  "file": "/home/simon/Scrivania/Base_Project_Deluxe/src/Space.cpp",
+  "output": "CMakeFiles/Base_Project_Deluxe.dir/src/Space.cpp.o"
+},
+{
+  "directory": "/home/simon/Scrivania/Base_Project_Deluxe/build",
+  "command": "/usr/bin/c++  -I/usr/include/eigen3 -isystem /usr/local/mfem/include -g -std=gnu++20 -o CMakeFiles/Base_Project_Deluxe.dir/src/utils.cpp.o -c /home/simon/Scrivania/Base_Project_Deluxe/src/utils.cpp",
+  "file": "/home/simon/Scrivania/Base_Project_Deluxe/src/utils.cpp",
+  "output": "CMakeFiles/Base_Project_Deluxe.dir/src/utils.cpp.o"
+}
+]
