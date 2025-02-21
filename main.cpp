@@ -28,12 +28,12 @@ int main(int argc, char *argv[]) {
     Agent agent(&space, 3000, local_coords, 1);
 
     double speed=1;
-    vector<double> velocity{ speed, 0};
+    vector<double> velocity{0, speed};
     agent.setLocalVelocity(velocity);
 
-    double T = 50;
+    double T = 500;
     double dt = 0.1;
-    double persistance_time = 4;
+    double persistance_time = 1;
 
     int n_steps = int(T/dt);
     int n_persistance = int(persistance_time/dt);
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         trajectory.push_back(agent.getGlobalPosition());
         cout<<"Step:"<<step<<endl;
 
-        if (step%n_persistance==0 and false) {
+        if (step%n_persistance==0) {
             double angle = dis(gen);
             agent.rotateVelocityDirection(angle);
         }

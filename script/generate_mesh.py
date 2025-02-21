@@ -35,6 +35,7 @@ s = gmsh.model.geo.addPlaneSurface([cl])
 # Synchronize
 gmsh.model.geo.synchronize()
 
+
 # Set mesh rougnhess (you should test whether normal diffusion is well enough approximated on it)
 gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0.05) # Min distance between points of the mesh
 gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 0.1) # Max ...

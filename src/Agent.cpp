@@ -4,7 +4,7 @@
 #include "../include/Agent.h"
 
 using namespace std;
-
+using namespace geometrycentral;
 Agent::Agent(Space *s, int element_id, std::vector<double> local_barycentrinc_coords, double radius):
     space(s) {
     element_id_CM=element_id;
@@ -22,35 +22,43 @@ int Agent::move(double dt) {
     gc_position = result.endPoint;
     gc_local_velocity_direction = result.endingDir;
 
+    //TODO: if you have boundary conditions you can put them here:
     if (result.hitBoundary) {
-        //TODO: if you have boundary conditions you can put them here:
-        geometrycentral::Vector3 global_position = getGlobalPosition();
+        Vector3 global_position = getGlobalPosition();
 
-        bool periodic_transformation = false;
+        // save the velocity direction before the corrective-shift:
+        Vector3 global_vel_direction;
+        space->convertLocaToGlobalVector(gc_position, gc_local_velocity_direction, global_vel_direction);
+
         // BC: x-direction periodic boundary conditions:
-        double shift=0.0;
+        // NOTE: this is a quick and dirty solution that doesn't require much coding
+        //       if your mesh has some more complicated structures, you can think of creating a table containing element-to-element
+        //       pairings to encode the periodicity, otherwise you could also perform the shift in global coordinates and then loop
+        //       over the elements to check on which one we are...
+
+        double periodic_shift=0.0;
         if (global_position[0] >= 10.0) {
-            //global_position[0] = global_position[0] - 10.0;
-            shift = -10.0;
-            periodic_transformation = true;
+            periodic_shift = -10.0;
         }else if (global_position[0] <= 0.0) {
-            //global_position[0] = global_position[0] + 10.0;
-            shift = 10.0;
-            periodic_transformation = true;
+            periodic_shift = 10.0;
         }
-        if (periodic_transformation) {
+        if (periodic_shift != 0.0) {
             // you have to find the new element and the new local coordinates:
-            geometrycentral::Vector2 dir{0,1};
-            result =traceGeodesic(*space->gc_geometry, gc_position, dir*shift, options);
+            Vector3 shift{periodic_shift,0,0};
+            Vector2 local_shift;
+
+            space->convertGlobalToLocalVector(gc_position, shift, local_shift);
+            result = traceGeodesic(*space->gc_geometry, gc_position, local_shift, options);
             gc_position = result.endPoint;
-            gc_local_velocity_direction = result.endingDir;
+
+            space->convertGlobalToLocalVector(gc_position, global_vel_direction, gc_local_velocity_direction);
         }
 
         // BC: y-direction reflective boundary conditions:
         if (global_position[1] >= 10.0 || global_position[1] <= 0.0) {
-            gc_local_velocity_direction[1] *= -1;
+            global_vel_direction[1] *= -1.0;
+            space->convertGlobalToLocalVector(gc_position, global_vel_direction, gc_local_velocity_direction);
         }
-
 
     }
 

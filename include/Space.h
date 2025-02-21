@@ -23,6 +23,11 @@ public:
     void setMFEMMesh(mfem::Mesh &mesh);
     void loadGCMeshFromFile(std::string filename);
 
+
+    std::vector<geometrycentral::Vector3> gc_getSurfaceTangentBasis(geometrycentral::surface::SurfacePoint surface_point);
+    void convertLocaToGlobalVector(geometrycentral::surface::SurfacePoint s_point, geometrycentral::Vector2 local_vec, geometrycentral::Vector3 &global_vec);
+    void convertGlobalToLocalVector(geometrycentral::surface::SurfacePoint sPoint,geometrycentral::Vector3 globalVec, geometrycentral::Vector2 &local_v);
+
     mfem::FiniteElementCollection* finite_element_collection;    // Type of finite elements (H1, DG, etc.)
     mfem::FiniteElementSpace* finite_element_space;
 
