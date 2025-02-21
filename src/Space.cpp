@@ -30,16 +30,16 @@ void Space::setMFEMMesh(mfem::Mesh &mesh) {
 
 
 void Space::loadGCMeshFromFile(std::string filename) {
-    std::tie(gc_mesh, gc_geometry) = geometrycentral::surface::readManifoldSurfaceMesh(filename);
+    std::tie(gc_mesh, gc_geometry) = readManifoldSurfaceMesh(filename);
 }
 
-std::vector<geometrycentral::Vector3> Space::gc_getSurfaceTangentBasis(geometrycentral::surface::SurfacePoint surface_point) {
-    Vector3 e1, e2; // Local tangent space basis
+std::vector<Vector3> Space::gc_getSurfaceTangentBasis(SurfacePoint surface_point, bool include_normal=false) {
+    Vector3 e1, e2, normal; // Local tangent space basis
 
     if (surface_point.type == SurfacePointType::Vertex) {
         // Vertex case
         geometrycentral::surface::Vertex v = surface_point.vertex;
-        Vector3 normal = gc_geometry->vertexNormals[v];
+        normal = gc_geometry->vertexNormals[v];
 
         // Compute a local tangent basis using adjacent edges
         for (Halfedge he : v.outgoingHalfedges()) {
@@ -63,7 +63,7 @@ std::vector<geometrycentral::Vector3> Space::gc_getSurfaceTangentBasis(geometryc
 
         // Compute normal from one of the adjacent faces
         Face f = he.face();
-        Vector3 normal = f.isBoundaryLoop() ? Vector3{0, 0, 0} : gc_geometry->faceNormal(f);
+        normal = f.isBoundaryLoop() ? Vector3{0, 0, 0} : gc_geometry->faceNormal(f);
 
         e2 = cross(normal, e1).normalize();  // Perpendicular to the edge
 
@@ -76,11 +76,17 @@ std::vector<geometrycentral::Vector3> Space::gc_getSurfaceTangentBasis(geometryc
         Vector3 v2 = gc_geometry->inputVertexPositions[he.next().next().vertex()];
 
         e1 = (v1 - v0).normalize();
-        Vector3 normal = gc_geometry->faceNormal(f);
+        normal = gc_geometry->faceNormal(f);
         e2 = cross(normal, e1).normalize();
     } else {
         throw std::runtime_error("Invalid SurfacePoint type.");
     }
+
+
+    if (include_normal) {
+        return {e1,e2,normal};
+    }
+
     return {e1, e2};
 }
 

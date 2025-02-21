@@ -24,7 +24,7 @@ public:
     void loadGCMeshFromFile(std::string filename);
 
 
-    std::vector<geometrycentral::Vector3> gc_getSurfaceTangentBasis(geometrycentral::surface::SurfacePoint surface_point);
+    std::vector<geometrycentral::Vector3> gc_getSurfaceTangentBasis(geometrycentral::surface::SurfacePoint surface_point, bool include_normal);
     void convertLocaToGlobalVector(geometrycentral::surface::SurfacePoint s_point, geometrycentral::Vector2 local_vec, geometrycentral::Vector3 &global_vec);
     void convertGlobalToLocalVector(geometrycentral::surface::SurfacePoint sPoint,geometrycentral::Vector3 globalVec, geometrycentral::Vector2 &local_v);
 
