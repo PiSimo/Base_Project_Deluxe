@@ -27,11 +27,11 @@ int main(int argc, char *argv[]) {
 
     Agent agent(&space, 3000, local_coords, 1);
 
-    double speed=1;
+    double speed=2;
     vector<double> velocity{0, speed};
     agent.setLocalVelocity(velocity);
 
-    double T = 500;
+    double T = 50;
     double dt = 0.1;
     double persistance_time = 1;
 
@@ -54,6 +54,9 @@ int main(int argc, char *argv[]) {
             double angle = dis(gen);
             agent.rotateVelocityDirection(angle);
         }
+    
+        if(step % 5==0)utils::saveAgentTrajectory(trajectory, "../output/plane_trajectory"+to_string(int(step/5))+".vtk");
+
     }
 
     utils::saveAgentTrajectory(trajectory, "../output/plane_trajectory.vtk");

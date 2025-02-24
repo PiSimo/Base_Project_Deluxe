@@ -24,6 +24,7 @@ int Agent::move(double dt) {
 
     //TODO: if you have boundary conditions you can put them here:
     if (result.hitBoundary) {
+        double remaining_length = speed*dt - result.length;
         Vector3 global_position = getGlobalPosition();
 
         // save the velocity direction before the corrective-shift:
@@ -59,7 +60,11 @@ int Agent::move(double dt) {
             global_vel_direction[1] *= -1.0;
             space->convertGlobalToLocalVector(gc_position, global_vel_direction, gc_local_velocity_direction);
         }
-
+        
+        // move for how much is left:
+        geometrycentral::surface::TraceGeodesicResult result =traceGeodesic(*space->gc_geometry, gc_position, gc_local_velocity_direction*remaining_length, options);
+        gc_position = result.endPoint;
+        gc_local_velocity_direction = result.endingDir;
     }
 
     return 0;
