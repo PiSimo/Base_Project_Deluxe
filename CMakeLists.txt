@@ -20,6 +20,9 @@ add_executable(Base_Project_Deluxe main.cpp
         include/Space.h
         src/Space.cpp
         include/utils.h
-        src/utils.cpp)
+        src/utils.cpp
+        include/CollisionManager.h
+        src/CollisionManager.cpp
+        src/CollisionManager.h)
 
 target_link_libraries(Base_Project_Deluxe PRIVATE ${MFEM_LIBS} ${GMSH_LIBRARY} geometry-central)

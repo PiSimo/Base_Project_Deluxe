@@ -8,5 +8,8 @@
 
 namespace utils {
     void saveAgentTrajectory(std::vector<geometrycentral::Vector3> trajectory, std::string filename);
+    void saveAgentTrajectoryWithRadius(const std::vector<geometrycentral::Vector3>& trajectory,
+                                   const std::string& filename,
+                                   float agentRadius);
 }
 #endif //UTILS_H

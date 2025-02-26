@@ -31,27 +31,37 @@ int Agent::move(double dt) {
         Vector3 global_vel_direction;
         space->convertLocaToGlobalVector(gc_position, gc_local_velocity_direction, global_vel_direction);
 
-        // BC: x-direction periodic boundary conditions:
-        // NOTE: this is a quick and dirty solution that doesn't require much coding
-        //       if your mesh has some more complicated structures, you can think of creating a table containing element-to-element
-        //       pairings to encode the periodicity, otherwise you could also perform the shift in global coordinates and then loop
-        //       over the elements to check on which one we are...
+        {
+            // BC: x-direction periodic boundary conditions:
+            // NOTE: this is a quick and dirty solution that doesn't require much coding
+            //       if your mesh has some more complicated structures, you can think of creating a table containing element-to-element
+            //       pairings to encode the periodicity, otherwise you could also perform the shift in global coordinates and then loop
+            //       over the elements to check on which one we are...
+            /*
+            double periodic_shift=0.0;
+            if (global_position[0] >= 10.0) {
+                periodic_shift = -10.0;
+            }else if (global_position[0] <= 0.0) {
+                periodic_shift = 10.0;
+            }
+            if (periodic_shift != 0.0) {
+                // you have to find the new element and the new local coordinates:
+                Vector3 shift{periodic_shift,0,0};
+                Vector2 local_shift;
 
-        double periodic_shift=0.0;
-        if (global_position[0] >= 10.0) {
-            periodic_shift = -10.0;
-        }else if (global_position[0] <= 0.0) {
-            periodic_shift = 10.0;
+                space->convertGlobalToLocalVector(gc_position, shift, local_shift);
+                result = traceGeodesic(*space->gc_geometry, gc_position, local_shift, options);
+                gc_position = result.endPoint;
+
+                space->convertGlobalToLocalVector(gc_position, global_vel_direction, gc_local_velocity_direction);
+            }
+            */
         }
-        if (periodic_shift != 0.0) {
-            // you have to find the new element and the new local coordinates:
-            Vector3 shift{periodic_shift,0,0};
-            Vector2 local_shift;
 
-            space->convertGlobalToLocalVector(gc_position, shift, local_shift);
-            result = traceGeodesic(*space->gc_geometry, gc_position, local_shift, options);
-            gc_position = result.endPoint;
-
+        // REFLECTIVE BOUNDARY CONDITIONS:
+        // BC:x-direction reflective boundary conditions:
+        if (global_position[0] >= 10.0 || global_position[0] <= 0.0) {
+            global_vel_direction[0] *= -1.0;
             space->convertGlobalToLocalVector(gc_position, global_vel_direction, gc_local_velocity_direction);
         }
 
@@ -62,7 +72,7 @@ int Agent::move(double dt) {
         }
         
         // move for how much is left:
-        geometrycentral::surface::TraceGeodesicResult result =traceGeodesic(*space->gc_geometry, gc_position, gc_local_velocity_direction*remaining_length, options);
+        result =traceGeodesic(*space->gc_geometry, gc_position, gc_local_velocity_direction*remaining_length, options);
         gc_position = result.endPoint;
         gc_local_velocity_direction = result.endingDir;
     }
@@ -71,11 +81,7 @@ int Agent::move(double dt) {
 }
 
 void Agent::rotateVelocityDirection(double angle) {
-    double c = cos(angle);
-    double s = sin(angle);
-
-    gc_local_velocity_direction.x = c*gc_local_velocity_direction.x - s*gc_local_velocity_direction.y;
-    gc_local_velocity_direction.y = s*gc_local_velocity_direction.x + c*gc_local_velocity_direction.y;
+    gc_local_velocity_direction = gc_local_velocity_direction.rotate(angle);
 }
 
 void Agent::setLocalVelocity(std::vector<double> velocity) {
