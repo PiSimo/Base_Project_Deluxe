@@ -5,6 +5,7 @@
 #include <geometrycentral/surface/vertex_position_geometry.h>
 #include <geometrycentral/surface/meshio.h>
 #include <geometrycentral/surface/surface_point.h>
+#include <geometrycentral/surface/flip_geodesics.h>
 
 #include "include/Agent.h"
 #include "include/Space.h"
@@ -14,98 +15,21 @@ using namespace  std;
 using namespace geometrycentral::surface;
 
 
-// Hash function for Vertex
-struct VertexHash {
-    std::size_t operator()(const Vertex& v) const {
-        return std::hash<size_t>()(v.getIndex());
-    }
-};
-
-std::vector<Vertex> findVerticesWithinRadius(SurfacePoint sp, double radius, Space *space) {
-    std::vector<Vertex> withinRadius;
-
-    // Priority queue for Dijkstra's algorithm
-    std::priority_queue<std::pair<double, Vertex>, std::vector<std::pair<double, Vertex>>, std::greater<>> pq;
-
-    // Distance map with custom hash function
-    std::unordered_map<Vertex, double, VertexHash> distance;
-
-    // Initialize with the closest vertex to SurfacePoint
-    Vertex startVertex = sp.nearestVertex();
-    pq.push({0.0, startVertex});
-    distance[startVertex] = 0.0;
-
-    while (!pq.empty()) {
-        auto [dist, v] = pq.top();
-        pq.pop();
-
-        // If the distance exceeds the radius, stop processing
-        if (dist > radius) continue;
-
-        withinRadius.push_back(v);
-
-        // Traverse neighbors
-        for (Halfedge he : v.outgoingHalfedges()) {
-            Vertex neighbor = he.tipVertex();
-            double edgeLength = space->gc_geometry->edgeLengths[he.edge()];
-            double newDist = dist + edgeLength;
-
-            if (distance.find(neighbor) == distance.end() || newDist < distance[neighbor]) {
-                distance[neighbor] = newDist;
-                pq.push({newDist, neighbor});
-            }
-        }
-    }
-
-    return withinRadius;
-}
-
-void writeVerticesToVTK(const std::string& filename, const std::vector<Vertex>& vertices, Space* space) {
-    std::ofstream outFile(filename);
-
-    if (!outFile.is_open()) {
-        std::cerr << "Error: Could not open file " << filename << " for writing.\n";
-        return;
-    }
-
-    // VTK Header
-    outFile << "# vtk DataFile Version 3.0\n";
-    outFile << "Vertex visualization\n";
-    outFile << "ASCII\n";
-    outFile << "DATASET POLYDATA\n";
-
-    // Write vertex positions
-    outFile << "POINTS " << vertices.size() << " float\n";
-    for (const Vertex& v : vertices) {
-        geometrycentral::Vector3 pos = space->gc_geometry->inputVertexPositions[v];
-        outFile << pos.x << " " << pos.y << " " << pos.z << "\n";
-    }
-
-    // Write point connectivity (as vertices, without edges or faces)
-    outFile << "VERTICES " << vertices.size() << " " << 2 * vertices.size() << "\n";
-    for (size_t i = 0; i < vertices.size(); i++) {
-        outFile << "1 " << i << "\n";
-    }
-
-    outFile.close();
-    std::cout << "VTK file saved to " << filename << "\n";
-}
-
 int main(int argc, char *argv[]) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<double> dis(0.0, 2.0 * M_PI);
 
-    string mesh_file = "../input/mesh/alveolar_sac_mesh";
-    mfem::Mesh mfem_mesh(mesh_file+".msh");
+    string mesh_file = "plane_mesh";
+    mfem::Mesh mfem_mesh("../input/mesh/"+mesh_file+".msh");
     Space space(mfem_mesh);
-    space.loadGCMeshFromFile(mesh_file+".stl");
+    space.loadGCMeshFromFile("../input/mesh/"+mesh_file+".stl");
 
     vector<double> local_coords{1./3., 1./3., 1./3.}; //barycentric
 
-    double radius=0.5;
-    Agent agent_1(&space, 100, local_coords, radius);
-    Agent agent_2(&space, 200, local_coords, radius);
+    double radius=0.4;
+    Agent agent_1(&space, 100, local_coords, radius, 1);
+    Agent agent_2(&space, 200, local_coords, radius, 2);
 
     double speed=2;
 
@@ -118,28 +42,103 @@ int main(int argc, char *argv[]) {
     vector<geometrycentral::Vector3> trajectory_1;
     vector<geometrycentral::Vector3> trajectory_2;
 
-    double T=10;
+    vector<Agent> agents{agent_1, agent_2};
+
+    vector<int> occupation_matrix(space.gc_mesh->nFaces(), 0);
+
+    double T=40;
     double dt=0.1;
     for (int i = 0;i <int(T/dt); i++) {
-        agent_1.move(dt);
-        agent_2.move(dt);
-        if (i%10==0) {
-            agent_1.rotateVelocityDirection(dis(gen));
-            agent_2.rotateVelocityDirection(dis(gen));
+        std::fill(occupation_matrix.begin(), occupation_matrix.end(), 0);
+        cout<<" step:"<<i<<endl;
+        for (int n_agent =0; n_agent <agents.size(); n_agent++) {
+            agents[n_agent].move(dt);
+            if (i%10==0) {
+                agents[n_agent].rotateVelocityDirection(dis(gen));
+            }
+
+
+            unordered_set<Face> faces = agents[n_agent].findFacesWithinRadius(agents[n_agent].gc_position, agents[n_agent].radius, &space);
+
+            for (Face f : faces) {
+                int face_index = f.getIndex();
+                if (occupation_matrix[face_index] == 0) {
+                    occupation_matrix[face_index] = agents[n_agent].agent_index;
+                }
+                else {
+                    Vertex start = agent_1.gc_position.nearestVertex();
+                    Vertex end = agent_2.gc_position.nearestVertex();
+
+                    std::unique_ptr<FlipEdgeNetwork> edgeNetwork = FlipEdgeNetwork::constructFromDijkstraPath(*space.gc_mesh, *space.gc_geometry, start, end);
+                    edgeNetwork->iterativeShorten();
+
+                    edgeNetwork->posGeom = space.gc_geometry.get();
+                    std::vector<std::vector<geometrycentral::Vector3>> polyline = edgeNetwork->getPathPolyline3D();
+
+                    // local-velocities
+                    double totalLength = 0.0;
+
+                    vector<geometrycentral::Vector3> percorso;
+                    // There may be multiple polylines, so iterate over each
+                    for (const auto& path : polyline) {
+                        // For each consecutive pair of points, add the distance
+                        for (size_t i = 0; i + 1 < path.size(); i++) {
+                            geometrycentral::Vector3 p0 = path[i];
+                            geometrycentral::Vector3 p1 = path[i + 1];
+                            double segmentLength = (p1 - p0).norm();
+                            totalLength += segmentLength;
+                            percorso.push_back(p1);
+                        }
+                    }
+                    utils::saveAgentTrajectory(percorso, "shortest_path.vtk");
+
+
+                    // 3) Compare path length to sum of radii
+                    double lengthDifference = (agent_1.radius + agent_2.radius)-totalLength;
+                    cout<<"   toatal_length:"<<totalLength<<endl;
+                    cout<<"   sum of radii:"<<agent_1.radius + agent_2.radius<<endl;
+                    if (lengthDifference <0 )break;
+                    const auto& path = polyline[0];
+
+                    // Velocity for agent_1 (start of the path)
+                    geometrycentral::Vector3 velocityAgent1 =
+                        (path[1] - path[0]).normalize();
+
+                    // Velocity for agent_2 (end of the path)
+                    geometrycentral::Vector3 velocityAgent2 =
+                        (polyline[polyline.size() -1][path.size() - 1] - polyline[polyline.size() -1][path.size() - 2]).normalize();
+
+                    geometrycentral::Vector2 vel_agent_1,vel_agent_2;
+                    space.convertGlobalToLocalVector(agent_1.gc_position, velocityAgent1, vel_agent_1);
+                    vel_agent_1 = vel_agent_1.normalize() + agent_1.gc_local_velocity_direction;
+                    agent_1.gc_local_velocity_direction = vel_agent_1.normalize();
+
+                    space.convertGlobalToLocalVector(agent_2.gc_position, velocityAgent2, vel_agent_2);
+                    vel_agent_2 = vel_agent_2.normalize() + agent_2.gc_local_velocity_direction;
+                    agent_2.gc_local_velocity_direction = vel_agent_2.normalize();
+
+                    agent_1.move(lengthDifference/(2*speed));
+                    agent_2.move(lengthDifference/(2*speed));
+
+                    cout<<"   collision!"<<" overlap-size"<<lengthDifference<<endl;
+
+                    break;
+                }
+            }
+
+            faces = agents[n_agent].findFacesWithinRadius(agents[n_agent].gc_position, agents[n_agent].radius, &space);
+
+            // visualisation:
+            utils::saveAgentTrajectoryWithRadius({agents[n_agent].getGlobalPosition()},
+                                "../output/"+mesh_file+"_trajectory_agent_"+to_string(n_agent)+"_step"+to_string(i+1)+".vtk",
+                                        agents[n_agent].radius);
+            utils::writeFacesToVTK("../output/"+mesh_file+"_neighbourhood_agent_"+to_string(n_agent)+"_step_"+to_string(i+1)+".vtk", faces, &space);
         }
-        utils::saveAgentTrajectoryWithRadius({agent_1.getGlobalPosition()},"../output/alveolar_trajectory_agent_1_step"+to_string(i+1)+".vtk",radius);
-        vector<Vertex> vertexes = findVerticesWithinRadius(agent_1.gc_position, radius+0.1, &space);
-        writeVerticesToVTK("../output/alveolar_neighbourhood_agent_1_step_"+to_string(i+1)+".vtk", vertexes, &space);
+
+
     }
-    trajectory_1.push_back(agent_1.getGlobalPosition());
-    //trajectory_2.push_back(agent_2.getGlobalPosition());
 
-    //utils::saveAgentTrajectoryWithRadius(trajectory_1, "../output/plane_trajectory_agent_1.vtk", radius);
-    //utils::saveAgentTrajectoryWithRadius(trajectory_2, "../output/plane_trajectory_agent_2.vtk", radius);
-
-    vector<Vertex> vertexes = findVerticesWithinRadius(agent_1.gc_position, radius, &space);
-    //writeVerticesToVTK("../output/neighbourhood_agent_1.vtk", vertexes, &space);
-    ofstream out("../output/alveolar_manifold.vtk");
+    ofstream out("../output/"+mesh_file+"_manifold.vtk");
     mfem_mesh.PrintVTK(out);
     out.close();
 

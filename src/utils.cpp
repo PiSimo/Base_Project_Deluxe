@@ -40,7 +40,7 @@ void utils::saveAgentTrajectoryWithRadius(const std::vector<geometrycentral::Vec
                                    const std::string& filename,
                                    float agentRadius)
 {
-    int nSegments = 16;
+    int nSegments = 6;
     std::ofstream vtk_file(filename);
     if (!vtk_file) {
         std::cerr << "Cannot open " << filename << " for writing.\n";
@@ -135,3 +135,58 @@ void utils::saveAgentTrajectoryWithRadius(const std::vector<geometrycentral::Vec
     vtk_file.close();
 }
 
+
+
+void utils::writeFacesToVTK(const std::string& filename, const std::unordered_set<geometrycentral::surface::Face>& faces, Space* space) {
+    std::ofstream outFile(filename);
+
+    if (!outFile.is_open()) {
+        std::cerr << "Error: Could not open file " << filename << " for writing.\n";
+        return;
+    }
+
+    // VTK Header
+    outFile << "# vtk DataFile Version 3.0\n";
+    outFile << "Face visualization\n";
+    outFile << "ASCII\n";
+    outFile << "DATASET POLYDATA\n";
+
+    // Collect all vertices
+    std::unordered_set<geometrycentral::surface::Vertex> uniqueVertices;
+    for (const geometrycentral::surface::Face& f : faces) {
+        for (geometrycentral::surface::Vertex v : f.adjacentVertices()) {
+            uniqueVertices.insert(v);
+        }
+    }
+
+    // Map each vertex to an index
+    std::unordered_map<geometrycentral::surface::Vertex, size_t, VertexHash> vertexIndex;
+    size_t index = 0;
+    for (const geometrycentral::surface::Vertex& v : uniqueVertices) {
+        vertexIndex[v] = index++;
+    }
+
+    // Write vertex positions
+    outFile << "POINTS " << uniqueVertices.size() << " float\n";
+    for (const geometrycentral::surface::Vertex& v : uniqueVertices) {
+        geometrycentral::Vector3 pos = space->gc_geometry->inputVertexPositions[v];
+        outFile << pos.x << " " << pos.y << " " << pos.z << "\n";
+    }
+
+    // Write faces
+    outFile << "POLYGONS " << faces.size() << " " << faces.size() * 4 << "\n";
+    for (const geometrycentral::surface::Face& f : faces) {
+        std::vector<geometrycentral::surface::Vertex> faceVertices;
+        for (geometrycentral::surface::Vertex v : f.adjacentVertices()) {
+            faceVertices.push_back(v);
+        }
+        outFile << faceVertices.size();
+        for (const geometrycentral::surface::Vertex& v : faceVertices) {
+            outFile << " " << vertexIndex[v];
+        }
+        outFile << "\n";
+    }
+
+    outFile.close();
+    // std::cout << "VTK file saved to " << filename << "\n";
+}

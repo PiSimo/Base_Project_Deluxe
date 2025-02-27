@@ -5,10 +5,13 @@
 
 using namespace std;
 using namespace geometrycentral;
-Agent::Agent(Space *s, int element_id, std::vector<double> local_barycentrinc_coords, double radius):
+using namespace geometrycentral::surface;
+
+Agent::Agent(Space *s, int element_id, std::vector<double> local_barycentrinc_coords, double radius, int agent_index):
     space(s) {
     element_id_CM=element_id;
     this->radius=radius;
+    this->agent_index=agent_index;
 
     //setting position on the GC mesh:
     // TODO: check that they use the same element indexes
@@ -72,12 +75,55 @@ int Agent::move(double dt) {
         }
         
         // move for how much is left:
-        result =traceGeodesic(*space->gc_geometry, gc_position, gc_local_velocity_direction*remaining_length, options);
+        result = traceGeodesic(*space->gc_geometry, gc_position, gc_local_velocity_direction*remaining_length, options);
         gc_position = result.endPoint;
         gc_local_velocity_direction = result.endingDir;
     }
 
     return 0;
+}
+
+std::unordered_set<Face> Agent::findFacesWithinRadius(SurfacePoint sp, double radius, Space *space) {
+    std::unordered_set<Face> withinRadiusFaces;
+
+    // Priority queue for Dijkstra's algorithm
+    std::priority_queue<std::pair<double, Vertex>, std::vector<std::pair<double, Vertex>>, std::greater<>> pq;
+
+    // Distance map with custom hash function
+    std::unordered_map<Vertex, double, utils::VertexHash> distance;
+
+    // Initialize with the closest vertex to SurfacePoint
+    Vertex startVertex = sp.nearestVertex();
+    pq.push({0.0, startVertex});
+    distance[startVertex] = 0.0;
+
+    int iter_counter = 0;
+    while (!pq.empty() && iter_counter < utils::MAX_NUMBER_OF_MESH_SEARCH_ITERS) {
+        auto [dist, v] = pq.top();
+        pq.pop();
+
+        // If the distance exceeds the radius, stop processing
+        if (dist > radius) continue;
+
+        // Add adjacent faces of the vertex
+        for (Face f : v.adjacentFaces()) {
+            withinRadiusFaces.insert(f);
+        }
+
+        // Traverse neighbors
+        for (Halfedge he : v.outgoingHalfedges()) {
+            Vertex neighbor = he.tipVertex();
+            double edgeLength = space->gc_geometry->edgeLengths[he.edge()];
+            double newDist = dist + edgeLength;
+
+            if (distance.find(neighbor) == distance.end() || newDist < distance[neighbor]) {
+                distance[neighbor] = newDist;
+                pq.push({newDist, neighbor});
+            }
+        }
+        iter_counter++;
+    }
+    return withinRadiusFaces;
 }
 
 void Agent::rotateVelocityDirection(double angle) {
