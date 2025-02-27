@@ -28,21 +28,21 @@ int main(int argc, char *argv[]) {
     vector<double> local_coords{1./3., 1./3., 1./3.}; //barycentric
 
     double radius=0.4;
-    Agent agent_1(&space, 100, local_coords, radius, 1);
-    Agent agent_2(&space, 200, local_coords, radius, 2);
+    Agent agent_01(&space, 100, local_coords, radius, 1);
+    Agent agent_02(&space, 200, local_coords, radius, 2);
 
     double speed=2;
 
     vector<double> velocity_1{0, speed};
     vector<double> velocity_2{0, -speed};
 
-    agent_1.setLocalVelocity(velocity_1);
-    agent_2.setLocalVelocity(velocity_2);
+    agent_01.setLocalVelocity(velocity_1);
+    agent_02.setLocalVelocity(velocity_2);
 
     vector<geometrycentral::Vector3> trajectory_1;
     vector<geometrycentral::Vector3> trajectory_2;
 
-    vector<Agent> agents{agent_1, agent_2};
+    vector<Agent> agents{agent_01, agent_02};
 
     vector<int> occupation_matrix(space.gc_mesh->nFaces(), 0);
 
@@ -66,8 +66,8 @@ int main(int argc, char *argv[]) {
                     occupation_matrix[face_index] = agents[n_agent].agent_index;
                 }
                 else {
-                    Vertex start = agent_1.gc_position.nearestVertex();
-                    Vertex end = agent_2.gc_position.nearestVertex();
+                    Vertex start = agents[n_agent].gc_position.nearestVertex();
+                    Vertex end = agents[(n_agent+1)%2].gc_position.nearestVertex();
 
                     std::unique_ptr<FlipEdgeNetwork> edgeNetwork = FlipEdgeNetwork::constructFromDijkstraPath(*space.gc_mesh, *space.gc_geometry, start, end);
                     edgeNetwork->iterativeShorten();
@@ -87,38 +87,46 @@ int main(int argc, char *argv[]) {
                             geometrycentral::Vector3 p1 = path[i + 1];
                             double segmentLength = (p1 - p0).norm();
                             totalLength += segmentLength;
+                            percorso.push_back(p0);
+
                             percorso.push_back(p1);
                         }
                     }
-                    utils::saveAgentTrajectory(percorso, "shortest_path.vtk");
+
+                    utils::saveAgentTrajectory(percorso, "../output/shortest_"+to_string(i)+"_path.vtk");
 
 
                     // 3) Compare path length to sum of radii
-                    double lengthDifference = (agent_1.radius + agent_2.radius)-totalLength;
+                    double lengthDifference = (agents[n_agent].radius + agents[(n_agent+1)%2].radius)-totalLength;
                     cout<<"   toatal_length:"<<totalLength<<endl;
-                    cout<<"   sum of radii:"<<agent_1.radius + agent_2.radius<<endl;
+                    cout<<"   sum of radii:"<<agents[n_agent].radius + agents[(n_agent+1)%2].radius<<endl;
                     if (lengthDifference <0 )break;
                     const auto& path = polyline[0];
 
-                    // Velocity for agent_1 (start of the path)
+                    // Velocity for agents[n_agent] (start of the path)
                     geometrycentral::Vector3 velocityAgent1 =
-                        (path[1] - path[0]).normalize();
+                        (percorso[1] - percorso[0]).normalize();
 
-                    // Velocity for agent_2 (end of the path)
+                    // Velocity for agents[(n_agent+1)%2] (end of the path)
                     geometrycentral::Vector3 velocityAgent2 =
-                        (polyline[polyline.size() -1][path.size() - 1] - polyline[polyline.size() -1][path.size() - 2]).normalize();
+                        (percorso[percorso.size()-1] - percorso[percorso.size()-2]).normalize();
 
-                    geometrycentral::Vector2 vel_agent_1,vel_agent_2;
-                    space.convertGlobalToLocalVector(agent_1.gc_position, velocityAgent1, vel_agent_1);
-                    vel_agent_1 = vel_agent_1.normalize() + agent_1.gc_local_velocity_direction;
-                    agent_1.gc_local_velocity_direction = vel_agent_1.normalize();
+                    geometrycentral::Vector2 vel_agents_first,vel_agents_second;
+                    space.convertGlobalToLocalVector(agents[n_agent].gc_position, velocityAgent1, vel_agents_first);
+                    vel_agents_first = -vel_agents_first.normalize();
+                    geometrycentral::Vector2 old_vel_first = agents[n_agent].gc_local_velocity_direction;
+                    agents[n_agent].gc_local_velocity_direction = vel_agents_first.normalize();
 
-                    space.convertGlobalToLocalVector(agent_2.gc_position, velocityAgent2, vel_agent_2);
-                    vel_agent_2 = vel_agent_2.normalize() + agent_2.gc_local_velocity_direction;
-                    agent_2.gc_local_velocity_direction = vel_agent_2.normalize();
+                    space.convertGlobalToLocalVector(agents[(n_agent+1)%2].gc_position, velocityAgent2, vel_agents_second);
+                    vel_agents_second    = -vel_agents_second.normalize();
+                    geometrycentral::Vector2 old_vel_second =  agents[(n_agent+1)%2].gc_local_velocity_direction;
+                    agents[(n_agent+1)%2].gc_local_velocity_direction = vel_agents_second.normalize();
 
-                    agent_1.move(lengthDifference/(2*speed));
-                    agent_2.move(lengthDifference/(2*speed));
+                    agents[n_agent].move(lengthDifference/(2*speed));
+                    agents[(n_agent+1)%2].move(lengthDifference/(2*speed));
+
+                    agents[n_agent].gc_local_velocity_direction = old_vel_first;
+                    agents[(n_agent+1)%2].gc_local_velocity_direction = old_vel_second;
 
                     cout<<"   collision!"<<" overlap-size"<<lengthDifference<<endl;
 
