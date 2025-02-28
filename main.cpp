@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     vector<double> local_coords{1./3., 1./3., 1./3.}; //barycentric
 
-    double radius=0.4;
+    double radius=1;
     Agent agent_01(&space, 100, local_coords, radius, 1);
     Agent agent_02(&space, 200, local_coords, radius, 2);
 
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
                     Vertex end = agents[(n_agent+1)%2].gc_position.nearestVertex();
 
                     std::unique_ptr<FlipEdgeNetwork> edgeNetwork = FlipEdgeNetwork::constructFromDijkstraPath(*space.gc_mesh, *space.gc_geometry, start, end);
-                    edgeNetwork->iterativeShorten();
+                    edgeNetwork->iterativeShorten(10);
 
                     edgeNetwork->posGeom = space.gc_geometry.get();
                     std::vector<std::vector<geometrycentral::Vector3>> polyline = edgeNetwork->getPathPolyline3D();
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 
                     // Velocity for agents[n_agent] (start of the path)
                     geometrycentral::Vector3 velocityAgent1 =
-                        (percorso[1] - percorso[0]).normalize();
+                        (percorso[0] - percorso[1]).normalize();
 
                     // Velocity for agents[(n_agent+1)%2] (end of the path)
                     geometrycentral::Vector3 velocityAgent2 =
@@ -113,12 +113,12 @@ int main(int argc, char *argv[]) {
 
                     geometrycentral::Vector2 vel_agents_first,vel_agents_second;
                     space.convertGlobalToLocalVector(agents[n_agent].gc_position, velocityAgent1, vel_agents_first);
-                    vel_agents_first = -vel_agents_first.normalize();
+                    vel_agents_first = vel_agents_first.normalize();
                     geometrycentral::Vector2 old_vel_first = agents[n_agent].gc_local_velocity_direction;
                     agents[n_agent].gc_local_velocity_direction = vel_agents_first.normalize();
 
                     space.convertGlobalToLocalVector(agents[(n_agent+1)%2].gc_position, velocityAgent2, vel_agents_second);
-                    vel_agents_second    = -vel_agents_second.normalize();
+                    vel_agents_second    = vel_agents_second.normalize();
                     geometrycentral::Vector2 old_vel_second =  agents[(n_agent+1)%2].gc_local_velocity_direction;
                     agents[(n_agent+1)%2].gc_local_velocity_direction = vel_agents_second.normalize();
 
@@ -133,14 +133,16 @@ int main(int argc, char *argv[]) {
                     break;
                 }
             }
+        }
 
-            faces = agents[n_agent].findFacesWithinRadius(agents[n_agent].gc_position, agents[n_agent].radius, &space);
+        for (int s=0; s!= agents.size();s++) {
+            unordered_set<Face>faces = agents[s].findFacesWithinRadius(agents[s].gc_position, agents[s].radius, &space);
 
             // visualisation:
-            utils::saveAgentTrajectoryWithRadius({agents[n_agent].getGlobalPosition()},
-                                "../output/"+mesh_file+"_trajectory_agent_"+to_string(n_agent)+"_step"+to_string(i+1)+".vtk",
-                                        agents[n_agent].radius);
-            utils::writeFacesToVTK("../output/"+mesh_file+"_neighbourhood_agent_"+to_string(n_agent)+"_step_"+to_string(i+1)+".vtk", faces, &space);
+            utils::saveAgentTrajectoryWithRadius({agents[s].getGlobalPosition()},
+                                    "../output/"+mesh_file+"_trajectory_agent_"+to_string(s)+"_step"+to_string(i+1)+".vtk",
+                                            agents[s].radius);
+            utils::writeFacesToVTK("../output/"+mesh_file+"_neighbourhood_agent_"+to_string(s)+"_step_"+to_string(i+1)+".vtk", faces, &space);
         }
 
 
